@@ -15,61 +15,121 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestCases {
+    private static int passed = 0;
+    private static int failed = 0;
+
     public static void main(String[] args) {
         UserService userService = new UserService();
         TaskService taskService = new TaskService();
         StoryService storyService = new StoryService();
         WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo());
+        User user = null;
 
         // TEST CASE 1 - Register + Login
-        User user = userService.register("Alice", "alice@example.com", "pass");
-        User loggedInUser = userService.login("alice@example.com", "pass");
-        assert loggedInUser != null && loggedInUser.getName().equals("Alice");
-        System.out.println("TEST CASE 1 PASSED");
+        try {
+            user = userService.register("Alice", "alice@example.com", "pass");
+            User loggedInUser = userService.login("alice@example.com", "pass");
+            assert loggedInUser != null && loggedInUser.getName().equals("Alice");
+            System.out.println("TEST CASE 1 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 1 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 2 - Create Task
-        Task task1 = taskService.createTask("Task 1", "Desc 1", new Date(), user.getId());
-        assert task1 != null && task1.getAssignedUserId().equals(user.getId());
-        System.out.println("TEST CASE 2 PASSED");
+        Task task1 = null;
+        try {
+            task1 = taskService.createTask("Task 1", "Desc 1", new Date(), user.getId());
+            assert task1 != null && task1.getAssignedUserId().equals(user.getId());
+            System.out.println("TEST CASE 2 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 2 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 3 - Create Subtask
-        Task subtask1 = taskService.createSubtask(task1.getId(), "Subtask 1", "Sub Desc", new Date(), user.getId());
-        assert subtask1 != null && subtask1.getParentId().equals(task1.getId());
-        System.out.println("TEST CASE 3 PASSED");
+        Task subtask1 = null;
+        try {
+            subtask1 = taskService.createSubtask(task1.getId(), "Subtask 1", "Sub Desc", new Date(), user.getId());
+            assert subtask1 != null && subtask1.getParentId().equals(task1.getId());
+            System.out.println("TEST CASE 3 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 3 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 4 - Move Subtask
-        taskService.moveTask(subtask1.getId(), null);
-        assert subtask1.getParentId() == null;
-        System.out.println("TEST CASE 4 PASSED");
+        try {
+            taskService.moveTask(subtask1.getId(), null);
+            assert subtask1.getParentId() == null;
+            System.out.println("TEST CASE 4 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 4 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 5 - Create Story with tasks
-        List<Task> tasksForStory = Arrays.asList(task1);
-        var story = storyService.createStory("Story 1", "Story Desc", tasksForStory);
-        assert story != null && story.getTasks().size() == 1;
-        System.out.println("TEST CASE 5 PASSED");
+        try {
+            List<Task> tasksForStory = Arrays.asList(task1);
+            var story = storyService.createStory("Story 1", "Story Desc", tasksForStory);
+            assert story != null && story.getTasks().size() == 1;
+            System.out.println("TEST CASE 5 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 5 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 6 - Workload Stats
-        Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
-        assert workload.containsKey(TaskStatus.PENDING);
-        System.out.println("TEST CASE 6 PASSED");
+        try {
+            Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
+            assert workload.containsKey(TaskStatus.PENDING);
+            System.out.println("TEST CASE 6 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 6 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 7 - Update Task
-        taskService.updateTask(task1.getId(), "Updated Task", "Updated Desc", new Date(), TaskStatus.COMPLETED);
-        Task updatedTask = taskService.getTaskRepo().findById(task1.getId());
-        assert updatedTask.getStatus() == TaskStatus.COMPLETED;
-        System.out.println("TEST CASE 7 PASSED");
+        try {
+            taskService.updateTask(task1.getId(), "Updated Task", "Updated Desc", new Date(), TaskStatus.COMPLETED);
+            Task updatedTask = taskService.getTaskRepo().findById(task1.getId());
+            assert updatedTask.getStatus() == TaskStatus.COMPLETED;
+            System.out.println("TEST CASE 7 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 7 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 8 - Delete Task
-        taskService.deleteTask(task1.getId());
-        assert taskService.getTaskRepo().findById(task1.getId()) == null;
-        System.out.println("TEST CASE 8 PASSED");
+        try {
+            taskService.deleteTask(task1.getId());
+            assert taskService.getTaskRepo().findById(task1.getId()) == null;
+            System.out.println("TEST CASE 8 PASSED");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 8 FAILED: " + t.getMessage());
+            failed++;
+        }
 
         // TEST CASE 9 - Invalid Login
         try {
             userService.login("wrong@example.com", "pass");
             assert false : "Expected exception for invalid login";
+            System.out.println("TEST CASE 9 FAILED: No exception thrown");
+            failed++;
         } catch (RuntimeException ex) {
             System.out.println("TEST CASE 9 PASSED (caught exception: " + ex.getMessage() + ")");
+            passed++;
+        } catch (Throwable t) {
+            System.out.println("TEST CASE 9 FAILED: " + t.getMessage());
+            failed++;
         }
 
         try {
@@ -81,7 +141,14 @@ public class TestCases {
             e.printStackTrace();
         }
 
-        System.out.println("ALL TEST CASES PASSED");
+        System.out.println("\n==============================");
+        System.out.println("SUMMARY: " + passed + " PASSED, " + failed + " FAILED");
+        System.out.println("==============================");
+        if (failed == 0) {
+            System.out.println("ALL TEST CASES PASSED");
+        } else {
+            System.out.println("SOME TEST CASES FAILED");
+        }
     }
 
     private static void testConcurrentTaskCreation() {
