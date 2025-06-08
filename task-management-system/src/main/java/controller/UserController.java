@@ -2,26 +2,30 @@ package controller;
 
 import model.User;
 import service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-@RestController
-@RequestMapping("/api/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody User user) {
-        User registeredUser = userService.registerUser(user);
-        return ResponseEntity.ok(registeredUser);
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestParam String username, @RequestParam String password) {
-        String token = userService.loginUser(username, password);
-        return ResponseEntity.ok(token);
+    public User register(String name, String email, String password) {
+        try {
+            return userService.register(name, email, password);
+        } catch (Exception e) {
+            System.out.println("Error registering user: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public User login(String email, String password) {
+        try {
+            return userService.login(email, password);
+        } catch (Exception e) {
+            System.out.println("Error logging in: " + e.getMessage());
+            return null;
+        }
     }
 }

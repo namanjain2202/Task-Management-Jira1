@@ -2,40 +2,69 @@ package controller;
 
 import model.Task;
 import service.TaskService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.List;
 
-@RestController
-@RequestMapping("/tasks")
 public class TaskController {
 
-    @Autowired
-    private TaskService taskService;
+    private final TaskService taskService;
 
-    @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody Task task) {
-        Task createdTask = taskService.createTask(task);
-        return ResponseEntity.ok(createdTask);
+    public TaskController(TaskService taskService) {
+        this.taskService = taskService;
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task task) {
-        Task updatedTask = taskService.updateTask(id, task);
-        return ResponseEntity.ok(updatedTask);
+    public Task createTask(String title, String description, Date deadline, String userId) {
+        try {
+            return taskService.createTask(title, description, deadline, userId);
+        } catch (Exception e) {
+            System.out.println("Error creating task: " + e.getMessage());
+            return null;
+        }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        taskService.deleteTask(id);
-        return ResponseEntity.noContent().build();
+    public Task createSubtask(String parentTaskId, String title, String description, Date deadline, String userId) {
+        try {
+            return taskService.createSubtask(parentTaskId, title, description, deadline, userId);
+        } catch (Exception e) {
+            System.out.println("Error creating subtask: " + e.getMessage());
+            return null;
+        }
     }
 
-    @GetMapping
-    public ResponseEntity<List<Task>> getTasks() {
-        List<Task> tasks = taskService.getAllTasks();
-        return ResponseEntity.ok(tasks);
+    public List<Task> getTasksForUser(String userId) {
+        try {
+            return taskService.getTasksByUser(userId);
+        } catch (Exception e) {
+            System.out.println("Error fetching tasks: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public void updateTask(String taskId, String title, String description, Date deadline, Task.Status status) {
+        try {
+            taskService.updateTask(taskId, title, description, deadline, status);
+            System.out.println("Task updated successfully");
+        } catch (Exception e) {
+            System.out.println("Error updating task: " + e.getMessage());
+        }
+    }
+
+    public void deleteTask(String taskId) {
+        try {
+            taskService.deleteTask(taskId);
+            System.out.println("Task deleted successfully");
+        } catch (Exception e) {
+            System.out.println("Error deleting task: " + e.getMessage());
+        }
+    }
+
+    public void moveTask(String taskId, String newParentId) {
+        try {
+            taskService.moveTask(taskId, newParentId);
+            System.out.println("Task moved successfully");
+        } catch (Exception e) {
+            System.out.println("Error moving task: " + e.getMessage());
+        }
     }
 }
