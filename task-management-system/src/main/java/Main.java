@@ -1,9 +1,8 @@
-package main.java;
-
 import model.Task;
 import model.User;
 import service.*;
 import model.Story;
+import model.TaskStatus;
 import repository.StoryRepository;
 
 import java.util.*;
@@ -36,7 +35,7 @@ public class Main {
         storyService.createStory("Story 1", "Story Desc", tasksForStory);
 
         // Get workload
-        Map<Task.Status, Integer> workload = workloadService.getUserWorkload(user.getId());
+        Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
         System.out.println("Workload: " + workload);
 
         // Create a story repository

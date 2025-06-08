@@ -1,6 +1,7 @@
 package controller;
 
 import model.Task;
+import model.TaskStatus;
 import service.TaskService;
 
 import java.util.Date;
@@ -41,7 +42,7 @@ public class TaskController {
         }
     }
 
-    public void updateTask(String taskId, String title, String description, Date deadline, Task.Status status) {
+    public void updateTask(String taskId, String title, String description, Date deadline, TaskStatus status) {
         try {
             taskService.updateTask(taskId, title, description, deadline, status);
             System.out.println("Task updated successfully");

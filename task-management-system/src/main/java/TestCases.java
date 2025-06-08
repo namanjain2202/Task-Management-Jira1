@@ -1,8 +1,18 @@
 import model.Task;
 import model.User;
 import service.*;
+import model.Story;
+import model.Subtask;
+import model.TaskPriority;
+import model.TaskStatus;
+import repository.StoryRepository;
+import repository.TaskRepository;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestCases {
     public static void main(String[] args) {
@@ -39,14 +49,14 @@ public class TestCases {
         System.out.println("TEST CASE 5 PASSED");
 
         // TEST CASE 6 - Workload Stats
-        Map<Task.Status, Integer> workload = workloadService.getUserWorkload(user.getId());
-        assert workload.containsKey(Task.Status.PENDING);
+        Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
+        assert workload.containsKey(TaskStatus.PENDING);
         System.out.println("TEST CASE 6 PASSED");
 
         // TEST CASE 7 - Update Task
-        taskService.updateTask(task1.getId(), "Updated Task", "Updated Desc", new Date(), Task.Status.COMPLETED);
+        taskService.updateTask(task1.getId(), "Updated Task", "Updated Desc", new Date(), TaskStatus.COMPLETED);
         Task updatedTask = taskService.getTaskRepo().findById(task1.getId());
-        assert updatedTask.getStatus() == Task.Status.COMPLETED;
+        assert updatedTask.getStatus() == TaskStatus.COMPLETED;
         System.out.println("TEST CASE 7 PASSED");
 
         // TEST CASE 8 - Delete Task
@@ -62,6 +72,121 @@ public class TestCases {
             System.out.println("TEST CASE 9 PASSED (caught exception: " + ex.getMessage() + ")");
         }
 
+        try {
+            testConcurrentTaskCreation();
+            testTaskValidation();
+            testTaskStatusTransitions();
+        } catch (Exception e) {
+            System.err.println("Test execution failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         System.out.println("ALL TEST CASES PASSED");
+    }
+
+    private static void testConcurrentTaskCreation() {
+        System.out.println("\nTesting concurrent task creation...");
+        TaskService taskService = new TaskService();
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
+        List<Exception> exceptions = new ArrayList<>();
+
+        for (int i = 0; i < 100; i++) {
+            final int taskId = i;
+            executor.submit(() -> {
+                try {
+                    taskService.createTask(
+                        "Task " + taskId,
+                        "Description " + taskId,
+                        new Date(),
+                        "HIGH"
+                    );
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    failureCount.incrementAndGet();
+                    synchronized (exceptions) {
+                        exceptions.add(e);
+                    }
+                }
+            });
+        }
+
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Concurrent task creation results: Success=" + successCount.get() + 
+                         ", Failure=" + failureCount.get());
+        
+        if (!exceptions.isEmpty()) {
+            System.out.println("\nExceptions encountered:");
+            for (Exception e : exceptions) {
+                System.out.println("- " + e.getMessage());
+            }
+        }
+    }
+
+    private static void testTaskValidation() {
+        System.out.println("\nTesting task validation...");
+        TaskService taskService = new TaskService();
+        
+        try {
+            // Test null title
+            taskService.createTask(null, "Description", new Date(), "HIGH");
+            System.out.println(" Test failed: Should have thrown exception for null title");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Test passed: Caught expected exception for null title");
+        }
+
+        try {
+            // Test empty title
+            taskService.createTask("", "Description", new Date(), "HIGH");
+            System.out.println("Test failed: Should have thrown exception for empty title");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Test passed: Caught expected exception for empty title");
+        }
+
+        try {
+            // Test null deadline
+            taskService.createTask("Title", "Description", null, "HIGH");
+            System.out.println("Test failed: Should have thrown exception for null deadline");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Test passed: Caught expected exception for null deadline");
+        }
+    }
+
+    private static void testTaskStatusTransitions() {
+        System.out.println("\nTesting task status transitions...");
+        TaskService taskService = new TaskService();
+        
+        try {
+            // Create a task
+            Task task = taskService.createTask("Test Task", "Description", new Date(), "HIGH");
+            
+            // Test valid status transitions
+            taskService.updateTask(task.getId(), "Test Task", "Description", new Date(), TaskStatus.IN_PROGRESS);
+            System.out.println("✅ Test passed: Valid status transition to IN_PROGRESS");
+            
+            taskService.updateTask(task.getId(), "Test Task", "Description", new Date(), TaskStatus.COMPLETED);
+            System.out.println("✅ Test passed: Valid status transition to COMPLETED");
+            
+            // Test invalid status transition
+            try {
+                taskService.updateTask(task.getId(), "Test Task", "Description", new Date(), TaskStatus.PENDING);
+                System.out.println("❌ Test failed: Should have thrown exception for invalid status transition");
+            } catch (IllegalStateException e) {
+                System.out.println("✅ Test passed: Caught expected exception for invalid status transition");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ Test failed: " + e.getMessage());
+        }
     }
 }

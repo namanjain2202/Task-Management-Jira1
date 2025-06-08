@@ -6,6 +6,7 @@
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/model/Subtask.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/repository/StoryRepository.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/model/Task.java
+/Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/model/TaskStatus.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/exception/TaskNotFoundException.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/controller/UserController.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/factory/TaskFactory.java
@@ -18,4 +19,5 @@
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/exception/TaskManagementException.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/repository/UserRepository.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/controller/StoryController.java
+/Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/model/TaskPriority.java
 /Users/namanjain/Documents/code/Task-Management-Jira1/task-management-system/src/main/java/service/StoryService.java

@@ -2,6 +2,7 @@ package service;
 
 import factory.TaskFactory;
 import model.Task;
+import model.TaskStatus;
 import repository.TaskRepository;
 
 import java.util.Date;
@@ -29,7 +30,7 @@ public class TaskService {
         return subtask;
     }
 
-    public void updateTask(String taskId, String title, String description, Date deadline, Task.Status status) {
+    public void updateTask(String taskId, String title, String description, Date deadline, TaskStatus status) {
         Task task = taskRepo.findById(taskId);
         if (task == null) throw new RuntimeException("Task not found!");
         task.update(title, description, deadline, status);

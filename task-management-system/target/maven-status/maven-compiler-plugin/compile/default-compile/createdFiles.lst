@@ -1,14 +1,14 @@
+model/TaskPriority.class
 TaskManagementException.class
-main/java/Main.class
 repository/TaskRepository.class
 repository/UserRepository.class
 service/TaskService.class
 TaskNotFoundException.class
 StoryNotFoundException.class
 service/StoryService.class
-model/Task$Status.class
 UserNotFoundException.class
 controller/TaskController.class
+Main.class
 factory/TaskFactory.class
 controller/UserController.class
 service/WorkloadService.class
@@ -16,6 +16,7 @@ TestCases.class
 model/User.class
 service/UserService.class
 model/Subtask.class
+model/TaskStatus.class
 repository/StoryRepository.class
 model/Task.class
 controller/StoryController.class

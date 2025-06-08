@@ -4,13 +4,11 @@ import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Task {
-    public enum Status {PENDING, IN_PROGRESS, COMPLETED}
-
     private String id;
     private String title;
     private String description;
     private Date deadline;
-    private Status status;
+    private TaskStatus status;
     private String assignedUserId;
     private String parentId; // can be Story/Task
     private List<Task> subtasks;
@@ -22,7 +20,7 @@ public class Task {
         this.title = title;
         this.description = description;
         this.deadline = deadline;
-        this.status = Status.PENDING;
+        this.status = TaskStatus.PENDING;
         this.subtasks = new ArrayList<>();
     }
 
@@ -39,7 +37,7 @@ public class Task {
         return id;
     }
 
-    public void update(String title, String description, Date deadline, Status status) {
+    public void update(String title, String description, Date deadline, TaskStatus status) {
         lock.lock();
         try {
             this.title = title;
@@ -55,7 +53,7 @@ public class Task {
         return subtasks;
     }
 
-    public Status getStatus() {
+    public TaskStatus getStatus() {
         return status;
     }
 

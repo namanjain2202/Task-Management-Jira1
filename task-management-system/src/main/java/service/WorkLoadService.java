@@ -1,6 +1,7 @@
 package service;
 
 import model.Task;
+import model.TaskStatus;
 import repository.TaskRepository;
 
 import java.util.HashMap;
@@ -14,9 +15,9 @@ public class WorkloadService {
         this.taskRepo = taskRepo;
     }
 
-    public Map<Task.Status, Integer> getUserWorkload(String userId) {
+    public Map<TaskStatus, Integer> getUserWorkload(String userId) {
         List<Task> tasks = taskRepo.findAllByUserId(userId);
-        Map<Task.Status, Integer> workload = new HashMap<>();
+        Map<TaskStatus, Integer> workload = new HashMap<>();
         for (Task task : tasks) {
             workload.put(task.getStatus(), workload.getOrDefault(task.getStatus(), 0) + 1);
         }
