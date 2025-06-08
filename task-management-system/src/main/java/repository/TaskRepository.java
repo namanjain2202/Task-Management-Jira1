@@ -1,13 +1,35 @@
 package repository;
 
 import model.Task;
-import java.util.List;
 
-public interface TaskRepository {
-    Task createTask(Task task);
-    Task updateTask(Task task);
-    void deleteTask(Long taskId);
-    Task getTaskById(Long taskId);
-    List<Task> getAllTasks();
-    List<Task> getTasksByUserId(Long userId);
+import java.util.*;
+
+public class TaskRepository {
+    private final Map<String, Task> tasks = new HashMap<>();
+
+    public void save(Task task) {
+        tasks.put(task.getId(), task);
+    }
+
+    public Task findById(String id) {
+        return tasks.get(id);
+    }
+
+    public void delete(String id) {
+        tasks.remove(id);
+    }
+
+    public List<Task> findAllByUserId(String userId) {
+        List<Task> result = new ArrayList<>();
+        for (Task task : tasks.values()) {
+            if (userId.equals(task.getAssignedUserId())) {
+                result.add(task);
+            }
+        }
+        return result;
+    }
+
+    public Collection<Task> findAll() {
+        return tasks.values();
+    }
 }

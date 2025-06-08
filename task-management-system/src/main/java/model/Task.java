@@ -1,65 +1,88 @@
+package model;
+
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class Task {
-    private Long id;
+    public enum Status {PENDING, IN_PROGRESS, COMPLETED}
+
+    private String id;
     private String title;
     private String description;
-    private String deadline;
-    private String status;
-    private String assignedUser;
+    private Date deadline;
+    private Status status;
+    private String assignedUserId;
+    private String parentId; // can be Story/Task
+    private List<Task> subtasks;
 
-    public Task(Long id, String title, String description, String deadline, String status, String assignedUser) {
-        this.id = id;
+    private final ReentrantLock lock = new ReentrantLock();
+
+    public Task(String title, String description, Date deadline) {
+        this.id = UUID.randomUUID().toString();
         this.title = title;
         this.description = description;
         this.deadline = deadline;
-        this.status = status;
-        this.assignedUser = assignedUser;
+        this.status = Status.PENDING;
+        this.subtasks = new ArrayList<>();
     }
 
-    public Long getId() {
+    public void addSubtask(Task subtask) {
+        lock.lock();
+        try {
+            subtasks.add(subtask);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void update(String title, String description, Date deadline, Status status) {
+        lock.lock();
+        try {
+            this.title = title;
+            this.description = description;
+            this.deadline = deadline;
+            this.status = status;
+        } finally {
+            lock.unlock();
+        }
     }
 
-    public String getTitle() {
-        return title;
+    public List<Task> getSubtasks() {
+        return subtasks;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getDeadline() {
-        return deadline;
-    }
-
-    public void setDeadline(String deadline) {
-        this.deadline = deadline;
-    }
-
-    public String getStatus() {
+    public Status getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setAssignedUserId(String userId) {
+        this.assignedUserId = userId;
     }
 
-    public String getAssignedUser() {
-        return assignedUser;
+    public String getAssignedUserId() {
+        return assignedUserId;
     }
 
-    public void setAssignedUser(String assignedUser) {
-        this.assignedUser = assignedUser;
+    public void setParentId(String parentId) {
+        this.parentId = parentId;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
+
+    @Override
+    public String toString() {
+        return "Task{" +
+                "id='" + id + '\'' +
+                ", title='" + title + '\'' +
+                ", status=" + status +
+                ", assignedUserId='" + assignedUserId + '\'' +
+                ", subtasks=" + subtasks.size() +
+                '}';
     }
 }

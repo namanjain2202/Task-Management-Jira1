@@ -1,49 +1,29 @@
 package model;
 
-import java.util.List;
+import java.util.UUID;
 
 public class User {
-    private Long id;
-    private String username;
+    private String id;
+    private String name;
+    private String email;
     private String password;
-    private List<Task> tasks;
 
-    public User(Long id, String username, String password, List<Task> tasks) {
-        this.id = id;
-        this.username = username;
+    public User(String name, String email, String password) {
+        this.id = UUID.randomUUID().toString();
+        this.name = name;
+        this.email = email;
         this.password = password;
-        this.tasks = tasks;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public String getName() {
+        return name;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public List<Task> getTasks() {
-        return tasks;
-    }
-
-    public void setTasks(List<Task> tasks) {
-        this.tasks = tasks;
+    public boolean checkPassword(String pwd) {
+        return this.password.equals(pwd);
     }
 }

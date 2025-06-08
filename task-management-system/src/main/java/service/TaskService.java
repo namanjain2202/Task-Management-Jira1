@@ -1,37 +1,49 @@
+package service;
+
+import factory.TaskFactory;
+import model.Task;
+import repository.TaskRepository;
+
+import java.util.Date;
+
 public class TaskService {
-    
-    private final TaskRepository taskRepository;
-    private final UserRepository userRepository;
+    private final TaskRepository taskRepo = new TaskRepository();
 
-    public TaskService(TaskRepository taskRepository, UserRepository userRepository) {
-        this.taskRepository = taskRepository;
-        this.userRepository = userRepository;
+    public Task createTask(String title, String description, Date deadline, String userId) {
+        Task task = TaskFactory.createTask(title, description, deadline);
+        task.setAssignedUserId(userId);
+        taskRepo.save(task);
+        return task;
     }
 
-    public Task createTask(String title, String description, LocalDateTime deadline, User assignedUser) {
-        Task task = new Task(title, description, deadline, TaskStatus.PENDING, assignedUser);
-        return taskRepository.save(task);
+    public Task createSubtask(String parentTaskId, String title, String description, Date deadline, String userId) {
+        Task parent = taskRepo.findById(parentTaskId);
+        if (parent == null) throw new RuntimeException("Parent task not found!");
+        Task subtask = TaskFactory.createTask(title, description, deadline);
+        subtask.setAssignedUserId(userId);
+        subtask.setParentId(parent.getId());
+        parent.addSubtask(subtask);
+        taskRepo.save(subtask);
+        return subtask;
     }
 
-    public Task updateTask(Long taskId, String title, String description, LocalDateTime deadline, TaskStatus status) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + taskId));
-        task.setTitle(title);
-        task.setDescription(description);
-        task.setDeadline(deadline);
-        task.setStatus(status);
-        return taskRepository.save(task);
+    public void updateTask(String taskId, String title, String description, Date deadline, Task.Status status) {
+        Task task = taskRepo.findById(taskId);
+        if (task == null) throw new RuntimeException("Task not found!");
+        task.update(title, description, deadline, status);
     }
 
-    public void deleteTask(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + taskId));
-        taskRepository.delete(task);
+    public void deleteTask(String taskId) {
+        taskRepo.delete(taskId);
     }
 
-    public List<Task> getUserTasks(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
-        return taskRepository.findByAssignedUser(user);
+    public void moveTask(String taskId, String newParentId) {
+        Task task = taskRepo.findById(taskId);
+        if (task == null) throw new RuntimeException("Task not found!");
+        task.setParentId(newParentId);
+    }
+
+    public TaskRepository getTaskRepo() {
+        return taskRepo;
     }
 }
