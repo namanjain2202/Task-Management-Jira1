@@ -1,6 +1,10 @@
+package main.java;
+
 import model.Task;
 import model.User;
 import service.*;
+import model.Story;
+import repository.StoryRepository;
 
 import java.util.*;
 
@@ -34,5 +38,24 @@ public class Main {
         // Get workload
         Map<Task.Status, Integer> workload = workloadService.getUserWorkload(user.getId());
         System.out.println("Workload: " + workload);
+
+        // Create a story repository
+        StoryRepository repository = new StoryRepository();
+
+        // Create some stories
+        Story story1 = new Story("Implement Login", "Create login functionality");
+        Story story2 = new Story("Add Search", "Implement search feature");
+
+        // Save stories to repository
+        repository.save(story1);
+        repository.save(story2);
+
+        // Find a story by ID
+        Story foundStory = repository.findById(story1.getId());
+        System.out.println("Found story: " + foundStory);
+
+        // Get all stories
+        System.out.println("\nAll stories:");
+        repository.findAll().forEach(story -> System.out.println(story));
     }
 }

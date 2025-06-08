@@ -23,6 +23,10 @@ public class User {
         return name;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
     public boolean checkPassword(String pwd) {
         return this.password.equals(pwd);
     }

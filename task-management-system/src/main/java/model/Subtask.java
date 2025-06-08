@@ -1,8 +1,12 @@
+package model;
+
+import java.util.*;
+
 public class Subtask extends Task {
     private String parentTaskId;
 
-    public Subtask(String id, String title, String description, String deadline, String assignedUser, String parentTaskId) {
-        super(id, title, description, deadline, assignedUser);
+    public Subtask(String title, String description, Date deadline, String parentTaskId) {
+        super(title, description, deadline);
         this.parentTaskId = parentTaskId;
     }
 

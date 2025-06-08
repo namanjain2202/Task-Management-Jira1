@@ -5,6 +5,8 @@ import model.Task;
 import repository.TaskRepository;
 
 import java.util.Date;
+import java.util.List;
+import java.util.ArrayList;
 
 public class TaskService {
     private final TaskRepository taskRepo = new TaskRepository();
@@ -41,6 +43,17 @@ public class TaskService {
         Task task = taskRepo.findById(taskId);
         if (task == null) throw new RuntimeException("Task not found!");
         task.setParentId(newParentId);
+    }
+
+    public List<Task> getTasksByUser(String userId) {
+        List<Task> allTasks = new ArrayList<>(taskRepo.findAll());
+        List<Task> userTasks = new ArrayList<>();
+        for (Task task : allTasks) {
+            if (userId.equals(task.getAssignedUserId())) {
+                userTasks.add(task);
+            }
+        }
+        return userTasks;
     }
 
     public TaskRepository getTaskRepo() {
