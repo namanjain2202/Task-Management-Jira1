@@ -7,6 +7,8 @@ import model.TaskPriority;
 import model.TaskStatus;
 import repository.StoryRepository;
 import repository.TaskRepository;
+import exception.TaskNotFoundException;
+import exception.TaskManagementException;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -84,7 +86,7 @@ public class TestCases {
             failed++;
         }
 
-        // TEST CASE 6 - Workload Stats
+        // TEST CASE 6 - Basic Workload Stats
         try {
             Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
             assert workload.containsKey(TaskStatus.PENDING);
@@ -132,10 +134,13 @@ public class TestCases {
             failed++;
         }
 
+        // Run advanced test cases
         try {
             testConcurrentTaskCreation();
             testTaskValidation();
             testTaskStatusTransitions();
+            testTaskMovement();
+            testDetailedWorkload();
         } catch (Exception e) {
             System.err.println("Test execution failed: " + e.getMessage());
             e.printStackTrace();
@@ -251,6 +256,174 @@ public class TestCases {
             } catch (IllegalStateException e) {
                 System.out.println("✅ Test passed: Caught expected exception for invalid status transition");
             }
+            
+        } catch (Exception e) {
+            System.err.println("❌ Test failed: " + e.getMessage());
+        }
+    }
+
+    private static void testTaskMovement() {
+        System.out.println("\nTesting task movement...");
+        TaskService taskService = new TaskService();
+        UserService userService = new UserService();
+        
+        try {
+            // Create a user
+            User user = userService.register("TestUser", "test@example.com", "pass");
+            
+            // Create parent tasks
+            Task parent1 = taskService.createTask("Parent 1", "Description", new Date(), user.getId());
+            Task parent2 = taskService.createTask("Parent 2", "Description", new Date(), user.getId());
+            
+            // Create a task to move
+            Task taskToMove = taskService.createTask("Task to Move", "Description", new Date(), user.getId());
+            
+            // Test 1: Move task to parent1
+            taskService.moveTask(taskToMove.getId(), parent1.getId());
+            assert taskToMove.getParentId().equals(parent1.getId());
+            System.out.println("✅ Test passed: Move task to parent1");
+            
+            // Test 2: Move task to parent2
+            taskService.moveTask(taskToMove.getId(), parent2.getId());
+            assert taskToMove.getParentId().equals(parent2.getId());
+            System.out.println("✅ Test passed: Move task to parent2");
+            
+            // Test 3: Move task to null (make it a root task)
+            taskService.moveTask(taskToMove.getId(), null);
+            assert taskToMove.getParentId() == null;
+            System.out.println("✅ Test passed: Move task to root level");
+            
+            // Test 4: Try to move non-existent task
+            try {
+                taskService.moveTask("non-existent-id", parent1.getId());
+                System.out.println("❌ Test failed: Should have thrown exception for non-existent task");
+            } catch (TaskNotFoundException e) {
+                System.out.println("✅ Test passed: Caught expected exception for non-existent task");
+            }
+            
+            // Test 5: Try to move to non-existent parent
+            try {
+                taskService.moveTask(taskToMove.getId(), "non-existent-parent");
+                System.out.println("❌ Test failed: Should have thrown exception for non-existent parent");
+            } catch (TaskNotFoundException e) {
+                System.out.println("✅ Test passed: Caught expected exception for non-existent parent");
+            }
+            
+            // Test 6: Try to create circular dependency
+            Task child = taskService.createSubtask(parent1.getId(), "Child", "Description", new Date(), user.getId());
+            try {
+                taskService.moveTask(parent1.getId(), child.getId());
+                System.out.println("❌ Test failed: Should have thrown exception for circular dependency");
+            } catch (TaskManagementException e) {
+                System.out.println("✅ Test passed: Caught expected exception for circular dependency");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ Test failed: " + e.getMessage());
+        }
+    }
+
+    private static void testDetailedWorkload() {
+        System.out.println("\nTesting detailed workload...");
+        TaskService taskService = new TaskService();
+        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo());
+        UserService userService = new UserService();
+        StoryService storyService = new StoryService();
+        
+        try {
+            // Create a user
+            User user = userService.register("WorkloadUser", "workload@example.com", "pass");
+            
+            // Create tasks with different statuses and priorities
+            Task task1 = taskService.createTask("High Priority Task", "Description", new Date(), user.getId());
+            task1.setPriority(TaskPriority.HIGH);
+            task1.update(task1.getTitle(), task1.getDescription(), task1.getDeadline(), TaskStatus.IN_PROGRESS);
+            
+            Task task2 = taskService.createTask("Medium Priority Task", "Description", new Date(), user.getId());
+            task2.setPriority(TaskPriority.MEDIUM);
+            task2.update(task2.getTitle(), task2.getDescription(), task2.getDeadline(), TaskStatus.COMPLETED);
+            
+            Task task3 = taskService.createTask("Low Priority Task", "Description", new Date(), user.getId());
+            task3.setPriority(TaskPriority.LOW);
+            task3.update(task3.getTitle(), task3.getDescription(), task3.getDeadline(), TaskStatus.PENDING);
+            
+            // Create a subtask
+            Task subtask = taskService.createSubtask(task1.getId(), "Subtask", "Description", new Date(), user.getId());
+            subtask.setPriority(TaskPriority.CRITICAL);
+            
+            // Create a story with tasks
+            List<Task> tasksForStory = Arrays.asList(task2, task3);
+            Story story = storyService.createStory("Test Story", "Story Description", tasksForStory);
+            
+            // Get detailed workload
+            Map<String, Object> workloadDetails = workloadService.getUserWorkloadDetails(user.getId());
+            
+            // Print user's workload details
+            System.out.println("\n=== User Workload Details ===");
+            System.out.println("User: " + user.getName() + " (" + user.getEmail() + ")");
+            
+            // Print root tasks
+            @SuppressWarnings("unchecked")
+            List<Task> rootTasks = (List<Task>) workloadDetails.get("rootTasks");
+            System.out.println("\nRoot Tasks:");
+            for (Task task : rootTasks) {
+                System.out.println("- " + task.getTitle() + 
+                    " (Priority: " + task.getPriority() + 
+                    ", Status: " + task.getStatus() + ")");
+            }
+            
+            // Print subtasks
+            @SuppressWarnings("unchecked")
+            List<Task> subtasks = (List<Task>) workloadDetails.get("subtasks");
+            System.out.println("\nSubtasks:");
+            for (Task task : subtasks) {
+                Task parent = taskService.getTaskById(task.getParentId());
+                System.out.println("- " + task.getTitle() + 
+                    " (Parent: " + (parent != null ? parent.getTitle() : "Unknown") + 
+                    ", Priority: " + task.getPriority() + 
+                    ", Status: " + task.getStatus() + ")");
+            }
+            
+            // Print stories
+            @SuppressWarnings("unchecked")
+            List<Story> stories = (List<Story>) workloadDetails.get("stories");
+            System.out.println("\nStories:");
+            for (Story s : stories) {
+                System.out.println("\nStory: " + s.getTitle());
+                System.out.println("Description: " + s.getDescription());
+                System.out.println("Tasks in this story:");
+                for (String taskId : s.getTasks()) {
+                    Task task = taskService.getTaskById(taskId);
+                    if (task != null) {
+                        System.out.println("  - " + task.getTitle() + 
+                            " (Priority: " + task.getPriority() + 
+                            ", Status: " + task.getStatus() + ")");
+                    }
+                }
+            }
+            
+            // Print tasks by parent
+            @SuppressWarnings("unchecked")
+            Map<String, List<Task>> tasksByParent = (Map<String, List<Task>>) workloadDetails.get("tasksByParent");
+            System.out.println("\nTasks by Parent:");
+            for (Map.Entry<String, List<Task>> entry : tasksByParent.entrySet()) {
+                Task parent = taskService.getTaskById(entry.getKey());
+                System.out.println("\nParent: " + (parent != null ? parent.getTitle() : "Unknown"));
+                for (Task task : entry.getValue()) {
+                    System.out.println("  - " + task.getTitle() + 
+                        " (Priority: " + task.getPriority() + 
+                        ", Status: " + task.getStatus() + ")");
+                }
+            }
+            
+            // Verify the data
+            assert rootTasks.size() == 3;
+            assert subtasks.size() == 1;
+            assert stories.size() == 1;
+            assert tasksByParent.containsKey(task1.getId());
+            assert tasksByParent.get(task1.getId()).size() == 1;
+            
+            System.out.println("\n✅ All workload data verified successfully!");
             
         } catch (Exception e) {
             System.err.println("❌ Test failed: " + e.getMessage());

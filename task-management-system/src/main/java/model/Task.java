@@ -9,6 +9,7 @@ public class Task {
     private String description;
     private Date deadline;
     private TaskStatus status;
+    private TaskPriority priority;
     private String assignedUserId;
     private String parentId; // can be Story/Task
     private List<Task> subtasks;
@@ -21,6 +22,7 @@ public class Task {
         this.description = description;
         this.deadline = deadline;
         this.status = TaskStatus.PENDING;
+        this.priority = TaskPriority.MEDIUM;
         this.subtasks = new ArrayList<>();
     }
 
@@ -28,6 +30,15 @@ public class Task {
         lock.lock();
         try {
             subtasks.add(subtask);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void removeSubtask(Task subtask) {
+        lock.lock();
+        try {
+            subtasks.remove(subtask);
         } finally {
             lock.unlock();
         }
@@ -90,6 +101,14 @@ public class Task {
 
     public String getParentId() {
         return parentId;
+    }
+
+    public TaskPriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(TaskPriority priority) {
+        this.priority = priority;
     }
 
     @Override

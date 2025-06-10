@@ -2,25 +2,137 @@ package service;
 
 import model.Task;
 import model.TaskStatus;
+import model.TaskPriority;
+import model.Story;
 import repository.TaskRepository;
+import repository.StoryRepository;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class WorkloadService {
     private final TaskRepository taskRepo;
+    private final StoryRepository storyRepo;
 
     public WorkloadService(TaskRepository taskRepo) {
         this.taskRepo = taskRepo;
+        this.storyRepo = new StoryRepository();
     }
 
     public Map<TaskStatus, Integer> getUserWorkload(String userId) {
         List<Task> tasks = taskRepo.findAllByUserId(userId);
         Map<TaskStatus, Integer> workload = new HashMap<>();
-        for (Task task : tasks) {
-            workload.put(task.getStatus(), workload.getOrDefault(task.getStatus(), 0) + 1);
+        
+        // Initialize all statuses with 0
+        for (TaskStatus status : TaskStatus.values()) {
+            workload.put(status, 0);
         }
+        
+        // Count tasks by status
+        for (Task task : tasks) {
+            TaskStatus status = task.getStatus();
+            workload.put(status, workload.get(status) + 1);
+        }
+        
         return workload;
+    }
+
+    public Map<String, Object> getDetailedWorkload(String userId) {
+        List<Task> tasks = taskRepo.findAllByUserId(userId);
+        Map<String, Object> detailedWorkload = new HashMap<>();
+        
+        // Count by status
+        Map<TaskStatus, Integer> statusCount = new HashMap<>();
+        for (TaskStatus status : TaskStatus.values()) {
+            statusCount.put(status, 0);
+        }
+        
+        // Count by priority
+        Map<TaskPriority, Integer> priorityCount = new HashMap<>();
+        for (TaskPriority priority : TaskPriority.values()) {
+            priorityCount.put(priority, 0);
+        }
+        
+        // Count total tasks and subtasks
+        int totalTasks = 0;
+        int totalSubtasks = 0;
+        
+        for (Task task : tasks) {
+            // Update status count
+            TaskStatus status = task.getStatus();
+            statusCount.put(status, statusCount.get(status) + 1);
+            
+            // Update priority count
+            TaskPriority priority = task.getPriority();
+            if (priority != null) {
+                priorityCount.put(priority, priorityCount.get(priority) + 1);
+            }
+            
+            // Count tasks and subtasks
+            if (task.getParentId() == null) {
+                totalTasks++;
+            } else {
+                totalSubtasks++;
+            }
+        }
+        
+        detailedWorkload.put("statusCount", statusCount);
+        detailedWorkload.put("priorityCount", priorityCount);
+        detailedWorkload.put("totalTasks", totalTasks);
+        detailedWorkload.put("totalSubtasks", totalSubtasks);
+        
+        return detailedWorkload;
+    }
+
+    public Map<String, Object> getUserWorkloadDetails(String userId) {
+        List<Task> allTasks = taskRepo.findAllByUserId(userId);
+        Map<String, Object> workloadDetails = new HashMap<>();
+        
+        // Separate tasks, subtasks, and stories
+        List<Task> rootTasks = new ArrayList<>();
+        List<Task> subtasks = new ArrayList<>();
+        List<Story> stories = new ArrayList<>();
+        
+        // Group tasks by their parent (story or task)
+        Map<String, List<Task>> tasksByParent = new HashMap<>();
+        
+        for (Task task : allTasks) {
+            String parentId = task.getParentId();
+            if (parentId == null) {
+                rootTasks.add(task);
+            } else {
+                subtasks.add(task);
+                tasksByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(task);
+            }
+        }
+        
+        // Get all stories and their tasks
+        for (Story story : storyRepo.findAll()) {
+            List<String> storyTaskIds = story.getTasks();
+            if (!storyTaskIds.isEmpty()) {
+                // Check if any of the story's tasks belong to this user
+                boolean hasUserTasks = storyTaskIds.stream()
+                    .anyMatch(taskId -> allTasks.stream()
+                        .anyMatch(task -> task.getId().equals(taskId)));
+                
+                if (hasUserTasks) {
+                    stories.add(story);
+                }
+            }
+        }
+        
+        // Add all components to the result
+        workloadDetails.put("rootTasks", rootTasks);
+        workloadDetails.put("subtasks", subtasks);
+        workloadDetails.put("stories", stories);
+        workloadDetails.put("tasksByParent", tasksByParent);
+        
+        // Add summary counts
+        Map<String, Integer> summary = new HashMap<>();
+        summary.put("totalRootTasks", rootTasks.size());
+        summary.put("totalSubtasks", subtasks.size());
+        summary.put("totalStories", stories.size());
+        workloadDetails.put("summary", summary);
+        
+        return workloadDetails;
     }
 }
