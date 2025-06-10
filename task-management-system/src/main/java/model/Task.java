@@ -49,20 +49,39 @@ public class Task {
         }
     }
 
-    public List<Task> getSubtasks() {
-        return subtasks;
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Date getDeadline() {
+        return deadline;
     }
 
     public TaskStatus getStatus() {
         return status;
     }
 
+    public String getAssignedUserId() {
+        return assignedUserId;
+    }
+
     public void setAssignedUserId(String userId) {
         this.assignedUserId = userId;
     }
 
-    public String getAssignedUserId() {
-        return assignedUserId;
+    public List<String> getSubtasks() {
+        lock.lock();
+        try {
+            return subtasks.stream()
+                    .map(Task::getId)
+                    .collect(java.util.stream.Collectors.toList());
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setParentId(String parentId) {

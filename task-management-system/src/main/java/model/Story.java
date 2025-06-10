@@ -24,8 +24,18 @@ public class Story {
         return id;
     }
 
-    public List<Task> getTasks() {
-        return tasks;
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public List<String> getTasks() {
+        return tasks.stream()
+                .map(Task::getId)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override

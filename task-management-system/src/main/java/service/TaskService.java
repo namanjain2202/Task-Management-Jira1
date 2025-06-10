@@ -57,6 +57,17 @@ public class TaskService {
         return userTasks;
     }
 
+    public Task getTaskById(String taskId) {
+        return taskRepo.findById(taskId);
+    }
+
+    public void updateTaskStatus(String taskId, TaskStatus newStatus) {
+        Task task = taskRepo.findById(taskId);
+        if (task == null) throw new RuntimeException("Task not found!");
+        task.update(task.getTitle(), task.getDescription(), task.getDeadline(), newStatus);
+        taskRepo.save(task);
+    }
+
     public TaskRepository getTaskRepo() {
         return taskRepo;
     }
