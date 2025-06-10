@@ -6,19 +6,26 @@ import model.TaskPriority;
 import model.Story;
 import repository.TaskRepository;
 import repository.StoryRepository;
+import exception.UserNotFoundException;
+import exception.StoryNotFoundException;
 
 import java.util.*;
 
 public class WorkloadService {
     private final TaskRepository taskRepo;
     private final StoryRepository storyRepo;
+    private final UserService userService;
 
-    public WorkloadService(TaskRepository taskRepo) {
+    public WorkloadService(TaskRepository taskRepo, UserService userService) {
         this.taskRepo = taskRepo;
         this.storyRepo = new StoryRepository();
+        this.userService = userService;
     }
 
     public Map<TaskStatus, Integer> getUserWorkload(String userId) {
+        // Verify user exists
+        userService.getUserById(userId);
+        
         List<Task> tasks = taskRepo.findAllByUserId(userId);
         Map<TaskStatus, Integer> workload = new HashMap<>();
         
@@ -68,7 +75,7 @@ public class WorkloadService {
             }
             
             // Count tasks and subtasks
-            if (task.getParentId() == null) {
+            if (task.getParentTaskId() == null) {
                 totalTasks++;
             } else {
                 totalSubtasks++;
@@ -84,6 +91,9 @@ public class WorkloadService {
     }
 
     public Map<String, Object> getUserWorkloadDetails(String userId) {
+        // Verify user exists
+        userService.getUserById(userId);
+        
         List<Task> allTasks = taskRepo.findAllByUserId(userId);
         Map<String, Object> workloadDetails = new HashMap<>();
         
@@ -92,16 +102,16 @@ public class WorkloadService {
         List<Task> subtasks = new ArrayList<>();
         List<Story> stories = new ArrayList<>();
         
-        // Group tasks by their parent (story or task)
+        // Group tasks by their parent task
         Map<String, List<Task>> tasksByParent = new HashMap<>();
         
         for (Task task : allTasks) {
-            String parentId = task.getParentId();
-            if (parentId == null) {
+            String parentTaskId = task.getParentTaskId();
+            if (parentTaskId == null) {
                 rootTasks.add(task);
             } else {
                 subtasks.add(task);
-                tasksByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(task);
+                tasksByParent.computeIfAbsent(parentTaskId, k -> new ArrayList<>()).add(task);
             }
         }
         

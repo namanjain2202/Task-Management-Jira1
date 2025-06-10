@@ -15,6 +15,12 @@ public class TaskService {
     private final TaskRepository taskRepo = new TaskRepository();
 
     public Task createTask(String title, String description, Date deadline, String userId) {
+        if (title == null || title.trim().isEmpty()) {
+            throw new IllegalArgumentException("Task title cannot be empty");
+        }
+        if (deadline == null) {
+            throw new IllegalArgumentException("Task deadline cannot be null");
+        }
         Task task = TaskFactory.createTask(title, description, deadline);
         task.setAssignedUserId(userId);
         taskRepo.save(task);
@@ -23,10 +29,11 @@ public class TaskService {
 
     public Task createSubtask(String parentTaskId, String title, String description, Date deadline, String userId) {
         Task parent = taskRepo.findById(parentTaskId);
-        if (parent == null) throw new RuntimeException("Parent task not found!");
+        if (parent == null) {
+            throw new TaskNotFoundException("Parent task not found with id: " + parentTaskId);
+        }
         Task subtask = TaskFactory.createTask(title, description, deadline);
         subtask.setAssignedUserId(userId);
-        subtask.setParentId(parent.getId());
         parent.addSubtask(subtask);
         taskRepo.save(subtask);
         return subtask;
@@ -34,60 +41,60 @@ public class TaskService {
 
     public void updateTask(String taskId, String title, String description, Date deadline, TaskStatus status) {
         Task task = taskRepo.findById(taskId);
-        if (task == null) throw new RuntimeException("Task not found!");
+        if (task == null) {
+            throw new TaskNotFoundException("Task not found with id: " + taskId);
+        }
         task.update(title, description, deadline, status);
     }
 
     public void deleteTask(String taskId) {
+        Task task = taskRepo.findById(taskId);
+        if (task == null) {
+            throw new TaskNotFoundException("Task not found with id: " + taskId);
+        }
+        // Remove from parent if exists
+        String parentTaskId = task.getParentTaskId();
+        if (parentTaskId != null) {
+            Task parent = taskRepo.findById(parentTaskId);
+            if (parent != null) {
+                parent.removeSubtask(task);
+            }
+        }
         taskRepo.delete(taskId);
     }
 
-    public void moveTask(String taskId, String newParentId) {
-        Task task = taskRepo.findById(taskId);
-        if (task == null) throw new TaskNotFoundException("Task not found!");
-
-        // Check if new parent exists (if provided)
-        if (newParentId != null) {
-            Task newParent = taskRepo.findById(newParentId);
-            if (newParent == null) throw new TaskNotFoundException("New parent task not found!");
-            
-            // Prevent circular dependency
-            if (isCircularDependency(task, newParent)) {
-                throw new TaskManagementException("Circular dependency detected!");
+    public void moveTask(String taskId, String newParentTaskId) {
+        Task task = getTaskById(taskId);
+        
+        // Check for circular dependency
+        if (newParentTaskId != null) {
+            Task newParent = getTaskById(newParentTaskId);
+            if (taskId.equals(newParentTaskId)) {
+                throw new TaskManagementException("Cannot move task to itself");
+            }
+            // Check if new parent is a descendant of the task
+            String currentParentId = newParent.getParentTaskId();
+            while (currentParentId != null) {
+                if (currentParentId.equals(taskId)) {
+                    throw new TaskManagementException("Circular dependency detected");
+                }
+                Task currentParent = getTaskById(currentParentId);
+                currentParentId = currentParent.getParentTaskId();
             }
         }
 
-        // Remove from old parent's subtasks if exists
-        String oldParentId = task.getParentId();
-        if (oldParentId != null) {
-            Task oldParent = taskRepo.findById(oldParentId);
-            if (oldParent != null) {
-                oldParent.removeSubtask(task);
-            }
+        // Remove from current parent if exists
+        String currentParentId = task.getParentTaskId();
+        if (currentParentId != null) {
+            Task currentParent = getTaskById(currentParentId);
+            currentParent.removeSubtask(task);
         }
 
-        // Add to new parent's subtasks if provided
-        if (newParentId != null) {
-            Task newParent = taskRepo.findById(newParentId);
+        // Add to new parent if specified
+        if (newParentTaskId != null) {
+            Task newParent = getTaskById(newParentTaskId);
             newParent.addSubtask(task);
         }
-
-        // Update task's parent reference
-        task.setParentId(newParentId);
-        taskRepo.save(task);
-    }
-
-    private boolean isCircularDependency(Task task, Task newParent) {
-        String currentParentId = newParent.getParentId();
-        while (currentParentId != null) {
-            if (currentParentId.equals(task.getId())) {
-                return true;
-            }
-            Task currentParent = taskRepo.findById(currentParentId);
-            if (currentParent == null) break;
-            currentParentId = currentParent.getParentId();
-        }
-        return false;
     }
 
     public List<Task> getTasksByUser(String userId) {
@@ -102,7 +109,11 @@ public class TaskService {
     }
 
     public Task getTaskById(String taskId) {
-        return taskRepo.findById(taskId);
+        Task task = taskRepo.findById(taskId);
+        if (task == null) {
+            throw new TaskNotFoundException("Task not found with id: " + taskId);
+        }
+        return task;
     }
 
     public void updateTaskStatus(String taskId, TaskStatus newStatus) {
@@ -116,3 +127,4 @@ public class TaskService {
         return taskRepo;
     }
 }
+

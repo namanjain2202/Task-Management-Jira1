@@ -12,7 +12,7 @@ public class Main {
         UserService userService = new UserService();
         TaskService taskService = new TaskService();
         StoryService storyService = new StoryService();
-        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo());
+        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo(), userService);
 
         // Register and login
         User user = userService.register("John", "john@example.com", "1234");

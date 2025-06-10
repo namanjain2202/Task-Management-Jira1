@@ -11,7 +11,7 @@ public class Task {
     private TaskStatus status;
     private TaskPriority priority;
     private String assignedUserId;
-    private String parentId; // can be Story/Task
+    private String parentTaskId; // Changed from parentId to parentTaskId to be more explicit
     private List<Task> subtasks;
 
     private final ReentrantLock lock = new ReentrantLock();
@@ -29,6 +29,10 @@ public class Task {
     public void addSubtask(Task subtask) {
         lock.lock();
         try {
+            if (subtask.getParentTaskId() != null) {
+                throw new IllegalStateException("Task already has a parent");
+            }
+            subtask.setParentTaskId(this.id);
             subtasks.add(subtask);
         } finally {
             lock.unlock();
@@ -38,7 +42,9 @@ public class Task {
     public void removeSubtask(Task subtask) {
         lock.lock();
         try {
-            subtasks.remove(subtask);
+            if (subtasks.remove(subtask)) {
+                subtask.setParentTaskId(null);
+            }
         } finally {
             lock.unlock();
         }
@@ -95,12 +101,12 @@ public class Task {
         }
     }
 
-    public void setParentId(String parentId) {
-        this.parentId = parentId;
+    public void setParentTaskId(String parentTaskId) {
+        this.parentTaskId = parentTaskId;
     }
 
-    public String getParentId() {
-        return parentId;
+    public String getParentTaskId() {
+        return parentTaskId;
     }
 
     public TaskPriority getPriority() {

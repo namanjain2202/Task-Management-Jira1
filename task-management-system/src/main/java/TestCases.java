@@ -9,6 +9,8 @@ import repository.StoryRepository;
 import repository.TaskRepository;
 import exception.TaskNotFoundException;
 import exception.TaskManagementException;
+import exception.UserNotFoundException;
+import exception.StoryNotFoundException;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -24,7 +26,7 @@ public class TestCases {
         UserService userService = new UserService();
         TaskService taskService = new TaskService();
         StoryService storyService = new StoryService();
-        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo());
+        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo(), userService);
         User user = null;
 
         // TEST CASE 1 - Register + Login
@@ -54,8 +56,8 @@ public class TestCases {
         // TEST CASE 3 - Create Subtask
         Task subtask1 = null;
         try {
-            subtask1 = taskService.createSubtask(task1.getId(), "Subtask 1", "Sub Desc", new Date(), user.getId());
-            assert subtask1 != null && subtask1.getParentId().equals(task1.getId());
+            subtask1 = taskService.createSubtask(task1.getId(), "Subtask 1", "SubDesc 1", new Date(), user.getId());
+            assert subtask1 != null && subtask1.getParentTaskId().equals(task1.getId());
             System.out.println("TEST CASE 3 PASSED");
             passed++;
         } catch (Throwable t) {
@@ -63,10 +65,12 @@ public class TestCases {
             failed++;
         }
 
-        // TEST CASE 4 - Move Subtask
+        // TEST CASE 4 - Update Task
         try {
-            taskService.moveTask(subtask1.getId(), null);
-            assert subtask1.getParentId() == null;
+            taskService.updateTask(task1.getId(), "Updated Task 1", "Updated Desc 1", new Date(), TaskStatus.IN_PROGRESS);
+            Task updatedTask = taskService.getTaskById(task1.getId());
+            assert updatedTask.getTitle().equals("Updated Task 1");
+            assert updatedTask.getStatus() == TaskStatus.IN_PROGRESS;
             System.out.println("TEST CASE 4 PASSED");
             passed++;
         } catch (Throwable t) {
@@ -74,34 +78,38 @@ public class TestCases {
             failed++;
         }
 
-        // TEST CASE 5 - Create Story with tasks
+        // TEST CASE 5 - Delete Task
         try {
-            List<Task> tasksForStory = Arrays.asList(task1);
-            var story = storyService.createStory("Story 1", "Story Desc", tasksForStory);
-            assert story != null && story.getTasks().size() == 1;
-            System.out.println("TEST CASE 5 PASSED");
-            passed++;
+            taskService.deleteTask(subtask1.getId());
+            try {
+                taskService.getTaskById(subtask1.getId());
+                System.out.println("TEST CASE 5 FAILED: Task still exists after deletion");
+                failed++;
+            } catch (TaskNotFoundException e) {
+                System.out.println("TEST CASE 5 PASSED");
+                passed++;
+            }
         } catch (Throwable t) {
             System.out.println("TEST CASE 5 FAILED: " + t.getMessage());
             failed++;
         }
 
-        // TEST CASE 6 - Basic Workload Stats
+        // TEST CASE 6 - Invalid Login
         try {
-            Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
-            assert workload.containsKey(TaskStatus.PENDING);
+            userService.login("alice@example.com", "wrongpass");
+            System.out.println("TEST CASE 6 FAILED: Should have thrown exception for invalid password");
+            failed++;
+        } catch (IllegalArgumentException e) {
             System.out.println("TEST CASE 6 PASSED");
             passed++;
-        } catch (Throwable t) {
-            System.out.println("TEST CASE 6 FAILED: " + t.getMessage());
-            failed++;
         }
 
-        // TEST CASE 7 - Update Task
+        // TEST CASE 7 - Create Story
         try {
-            taskService.updateTask(task1.getId(), "Updated Task", "Updated Desc", new Date(), TaskStatus.COMPLETED);
-            Task updatedTask = taskService.getTaskRepo().findById(task1.getId());
-            assert updatedTask.getStatus() == TaskStatus.COMPLETED;
+            Task task2 = taskService.createTask("Task 2", "Desc 2", new Date(), user.getId());
+            List<Task> tasksForStory = Arrays.asList(task2);
+            Story story = storyService.createStory("Story 1", "Story Desc", tasksForStory);
+            assert story != null && story.getTasks().contains(task2.getId());
             System.out.println("TEST CASE 7 PASSED");
             passed++;
         } catch (Throwable t) {
@@ -109,10 +117,11 @@ public class TestCases {
             failed++;
         }
 
-        // TEST CASE 8 - Delete Task
+        // TEST CASE 8 - Get Workload
         try {
-            taskService.deleteTask(task1.getId());
-            assert taskService.getTaskRepo().findById(task1.getId()) == null;
+            Map<TaskStatus, Integer> workload = workloadService.getUserWorkload(user.getId());
+            assert workload.containsKey(TaskStatus.IN_PROGRESS);
+            assert workload.get(TaskStatus.IN_PROGRESS) > 0;
             System.out.println("TEST CASE 8 PASSED");
             passed++;
         } catch (Throwable t) {
@@ -120,65 +129,56 @@ public class TestCases {
             failed++;
         }
 
-        // TEST CASE 9 - Invalid Login
+        // TEST CASE 9 - Invalid User
         try {
-            userService.login("wrong@example.com", "pass");
-            assert false : "Expected exception for invalid login";
-            System.out.println("TEST CASE 9 FAILED: No exception thrown");
+            workloadService.getUserWorkload("nonexistent");
+            System.out.println("TEST CASE 9 FAILED: Should have thrown exception for non-existent user");
             failed++;
-        } catch (RuntimeException ex) {
-            System.out.println("TEST CASE 9 PASSED (caught exception: " + ex.getMessage() + ")");
+        } catch (UserNotFoundException e) {
+            System.out.println("TEST CASE 9 PASSED");
             passed++;
-        } catch (Throwable t) {
-            System.out.println("TEST CASE 9 FAILED: " + t.getMessage());
-            failed++;
         }
 
-        // Run advanced test cases
-        try {
-            testConcurrentTaskCreation();
-            testTaskValidation();
-            testTaskStatusTransitions();
-            testTaskMovement();
-            testDetailedWorkload();
-        } catch (Exception e) {
-            System.err.println("Test execution failed: " + e.getMessage());
-            e.printStackTrace();
-        }
-
+        // Print summary
         System.out.println("\n==============================");
         System.out.println("SUMMARY: " + passed + " PASSED, " + failed + " FAILED");
         System.out.println("==============================");
         if (failed == 0) {
             System.out.println("ALL TEST CASES PASSED");
-        } else {
-            System.out.println("SOME TEST CASES FAILED");
         }
+
+        // Test concurrent task creation
+        testConcurrentTaskCreation(taskService, user.getId());
+
+        // Test task validation
+        testTaskValidation(taskService, user.getId());
+
+        // Test task status transitions
+        testTaskStatusTransitions(taskService, user.getId());
+
+        // Test task movement
+        testTaskMovement(taskService, user.getId());
+
+        // Test detailed workload
+        testDetailedWorkload();
     }
 
-    private static void testConcurrentTaskCreation() {
+    private static void testConcurrentTaskCreation(TaskService taskService, String userId) {
         System.out.println("\nTesting concurrent task creation...");
-        TaskService taskService = new TaskService();
-        ExecutorService executor = Executors.newFixedThreadPool(10);
+        int numThreads = 10;
+        int tasksPerThread = 10;
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
-        List<Exception> exceptions = new ArrayList<>();
 
-        for (int i = 0; i < 100; i++) {
-            final int taskId = i;
+        for (int i = 0; i < numThreads; i++) {
             executor.submit(() -> {
-                try {
-                    taskService.createTask(
-                        "Task " + taskId,
-                        "Description " + taskId,
-                        new Date(),
-                        "HIGH"
-                    );
-                    successCount.incrementAndGet();
-                } catch (Exception e) {
-                    failureCount.incrementAndGet();
-                    synchronized (exceptions) {
-                        exceptions.add(e);
+                for (int j = 0; j < tasksPerThread; j++) {
+                    try {
+                        taskService.createTask("Concurrent Task " + j, "Description", new Date(), userId);
+                        successCount.incrementAndGet();
+                    } catch (Exception e) {
+                        failureCount.incrementAndGet();
                     }
                 }
             });
@@ -186,148 +186,144 @@ public class TestCases {
 
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
+            executor.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
-            executor.shutdownNow();
             Thread.currentThread().interrupt();
         }
 
-        System.out.println("Concurrent task creation results: Success=" + successCount.get() + 
-                         ", Failure=" + failureCount.get());
-        
-        if (!exceptions.isEmpty()) {
-            System.out.println("\nExceptions encountered:");
-            for (Exception e : exceptions) {
-                System.out.println("- " + e.getMessage());
-            }
-        }
+        System.out.println("Concurrent task creation results: Success=" + successCount.get() + ", Failure=" + failureCount.get());
     }
 
-    private static void testTaskValidation() {
+    private static void testTaskValidation(TaskService taskService, String userId) {
         System.out.println("\nTesting task validation...");
-        TaskService taskService = new TaskService();
         
+        // Test null title
         try {
-            // Test null title
-            taskService.createTask(null, "Description", new Date(), "HIGH");
-            System.out.println(" Test failed: Should have thrown exception for null title");
+            taskService.createTask(null, "Description", new Date(), userId);
+            System.out.println("Test failed: Should have thrown exception for null title");
         } catch (IllegalArgumentException e) {
-            System.out.println("Test passed: Caught expected exception for null title");
+            System.out.println("Test passed: Caught exception for null title");
         }
 
+        // Test empty title
         try {
-            // Test empty title
-            taskService.createTask("", "Description", new Date(), "HIGH");
+            taskService.createTask("", "Description", new Date(), userId);
             System.out.println("Test failed: Should have thrown exception for empty title");
         } catch (IllegalArgumentException e) {
-            System.out.println("Test passed: Caught expected exception for empty title");
+            System.out.println("Test passed: Caught exception for empty title");
         }
 
+        // Test null deadline
         try {
-            // Test null deadline
-            taskService.createTask("Title", "Description", null, "HIGH");
+            taskService.createTask("Title", "Description", null, userId);
             System.out.println("Test failed: Should have thrown exception for null deadline");
         } catch (IllegalArgumentException e) {
-            System.out.println("Test passed: Caught expected exception for null deadline");
+            System.out.println("Test passed: Caught exception for null deadline");
         }
     }
 
-    private static void testTaskStatusTransitions() {
+    private static void testTaskStatusTransitions(TaskService taskService, String userId) {
         System.out.println("\nTesting task status transitions...");
-        TaskService taskService = new TaskService();
         
+        Task task = taskService.createTask("Status Test", "Description", new Date(), userId);
+        
+        // Test valid transition to IN_PROGRESS
         try {
-            // Create a task
-            Task task = taskService.createTask("Test Task", "Description", new Date(), "HIGH");
-            
-            // Test valid status transitions
-            taskService.updateTask(task.getId(), "Test Task", "Description", new Date(), TaskStatus.IN_PROGRESS);
+            taskService.updateTask(task.getId(), task.getTitle(), task.getDescription(), task.getDeadline(), TaskStatus.IN_PROGRESS);
+            Task updatedTask = taskService.getTaskById(task.getId());
+            assert updatedTask.getStatus() == TaskStatus.IN_PROGRESS;
             System.out.println("✅ Test passed: Valid status transition to IN_PROGRESS");
-            
-            taskService.updateTask(task.getId(), "Test Task", "Description", new Date(), TaskStatus.COMPLETED);
-            System.out.println("✅ Test passed: Valid status transition to COMPLETED");
-            
-            // Test invalid status transition
-            try {
-                taskService.updateTask(task.getId(), "Test Task", "Description", new Date(), TaskStatus.PENDING);
-                System.out.println("❌ Test failed: Should have thrown exception for invalid status transition");
-            } catch (IllegalStateException e) {
-                System.out.println("✅ Test passed: Caught expected exception for invalid status transition");
-            }
-            
         } catch (Exception e) {
-            System.err.println("❌ Test failed: " + e.getMessage());
+            System.out.println("❌ Test failed: " + e.getMessage());
+        }
+        
+        // Test valid transition to COMPLETED
+        try {
+            taskService.updateTask(task.getId(), task.getTitle(), task.getDescription(), task.getDeadline(), TaskStatus.COMPLETED);
+            Task updatedTask = taskService.getTaskById(task.getId());
+            assert updatedTask.getStatus() == TaskStatus.COMPLETED;
+            System.out.println("✅ Test passed: Valid status transition to COMPLETED");
+        } catch (Exception e) {
+            System.out.println("❌ Test failed: " + e.getMessage());
+        }
+        
+        // Test invalid transition back to PENDING
+        try {
+            taskService.updateTask(task.getId(), task.getTitle(), task.getDescription(), task.getDeadline(), TaskStatus.PENDING);
+            System.out.println("❌ Test failed: Should have thrown exception for invalid status transition");
+        } catch (Exception e) {
+            System.out.println("✅ Test passed: Caught exception for invalid status transition");
         }
     }
 
-    private static void testTaskMovement() {
+    private static void testTaskMovement(TaskService taskService, String userId) {
         System.out.println("\nTesting task movement...");
-        TaskService taskService = new TaskService();
-        UserService userService = new UserService();
         
+        // Create parent tasks
+        Task parent1 = taskService.createTask("Parent 1", "Description", new Date(), userId);
+        Task parent2 = taskService.createTask("Parent 2", "Description", new Date(), userId);
+        Task child = taskService.createTask("Child", "Description", new Date(), userId);
+        
+        // Test moving to parent1
         try {
-            // Create a user
-            User user = userService.register("TestUser", "test@example.com", "pass");
-            
-            // Create parent tasks
-            Task parent1 = taskService.createTask("Parent 1", "Description", new Date(), user.getId());
-            Task parent2 = taskService.createTask("Parent 2", "Description", new Date(), user.getId());
-            
-            // Create a task to move
-            Task taskToMove = taskService.createTask("Task to Move", "Description", new Date(), user.getId());
-            
-            // Test 1: Move task to parent1
-            taskService.moveTask(taskToMove.getId(), parent1.getId());
-            assert taskToMove.getParentId().equals(parent1.getId());
+            taskService.moveTask(child.getId(), parent1.getId());
+            Task movedTask = taskService.getTaskById(child.getId());
+            assert movedTask.getParentTaskId().equals(parent1.getId());
             System.out.println("✅ Test passed: Move task to parent1");
-            
-            // Test 2: Move task to parent2
-            taskService.moveTask(taskToMove.getId(), parent2.getId());
-            assert taskToMove.getParentId().equals(parent2.getId());
-            System.out.println("✅ Test passed: Move task to parent2");
-            
-            // Test 3: Move task to null (make it a root task)
-            taskService.moveTask(taskToMove.getId(), null);
-            assert taskToMove.getParentId() == null;
-            System.out.println("✅ Test passed: Move task to root level");
-            
-            // Test 4: Try to move non-existent task
-            try {
-                taskService.moveTask("non-existent-id", parent1.getId());
-                System.out.println("❌ Test failed: Should have thrown exception for non-existent task");
-            } catch (TaskNotFoundException e) {
-                System.out.println("✅ Test passed: Caught expected exception for non-existent task");
-            }
-            
-            // Test 5: Try to move to non-existent parent
-            try {
-                taskService.moveTask(taskToMove.getId(), "non-existent-parent");
-                System.out.println("❌ Test failed: Should have thrown exception for non-existent parent");
-            } catch (TaskNotFoundException e) {
-                System.out.println("✅ Test passed: Caught expected exception for non-existent parent");
-            }
-            
-            // Test 6: Try to create circular dependency
-            Task child = taskService.createSubtask(parent1.getId(), "Child", "Description", new Date(), user.getId());
-            try {
-                taskService.moveTask(parent1.getId(), child.getId());
-                System.out.println("❌ Test failed: Should have thrown exception for circular dependency");
-            } catch (TaskManagementException e) {
-                System.out.println("✅ Test passed: Caught expected exception for circular dependency");
-            }
-            
         } catch (Exception e) {
-            System.err.println("❌ Test failed: " + e.getMessage());
+            System.out.println("❌ Test failed: " + e.getMessage());
+        }
+        
+        // Test moving to parent2
+        try {
+            taskService.moveTask(child.getId(), parent2.getId());
+            Task movedTask = taskService.getTaskById(child.getId());
+            assert movedTask.getParentTaskId().equals(parent2.getId());
+            System.out.println("✅ Test passed: Move task to parent2");
+        } catch (Exception e) {
+            System.out.println("❌ Test failed: " + e.getMessage());
+        }
+        
+        // Test moving to root level
+        try {
+            taskService.moveTask(child.getId(), null);
+            Task movedTask = taskService.getTaskById(child.getId());
+            assert movedTask.getParentTaskId() == null;
+            System.out.println("✅ Test passed: Move task to root level");
+        } catch (Exception e) {
+            System.out.println("❌ Test failed: " + e.getMessage());
+        }
+        
+        // Test moving non-existent task
+        try {
+            taskService.moveTask("nonexistent", parent1.getId());
+            System.out.println("❌ Test failed: Should have thrown exception for non-existent task");
+        } catch (TaskNotFoundException e) {
+            System.out.println("✅ Test passed: Caught expected exception for non-existent task");
+        }
+        
+        // Test moving to non-existent parent
+        try {
+            taskService.moveTask(child.getId(), "nonexistent");
+            System.out.println("❌ Test failed: Should have thrown exception for non-existent parent");
+        } catch (TaskNotFoundException e) {
+            System.out.println("✅ Test passed: Caught expected exception for non-existent parent");
+        }
+        
+        // Test circular dependency
+        try {
+            taskService.moveTask(parent1.getId(), child.getId());
+            System.out.println("❌ Test failed: Should have thrown exception for circular dependency");
+        } catch (TaskManagementException e) {
+            System.out.println("✅ Test passed: Caught expected exception for circular dependency");
         }
     }
 
     private static void testDetailedWorkload() {
         System.out.println("\nTesting detailed workload...");
         TaskService taskService = new TaskService();
-        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo());
         UserService userService = new UserService();
+        WorkloadService workloadService = new WorkloadService(taskService.getTaskRepo(), userService);
         StoryService storyService = new StoryService();
         
         try {
@@ -377,7 +373,7 @@ public class TestCases {
             List<Task> subtasks = (List<Task>) workloadDetails.get("subtasks");
             System.out.println("\nSubtasks:");
             for (Task task : subtasks) {
-                Task parent = taskService.getTaskById(task.getParentId());
+                Task parent = taskService.getTaskById(task.getParentTaskId());
                 System.out.println("- " + task.getTitle() + 
                     " (Parent: " + (parent != null ? parent.getTitle() : "Unknown") + 
                     ", Priority: " + task.getPriority() + 

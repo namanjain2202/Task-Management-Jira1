@@ -6,18 +6,17 @@ public class Story {
     private String id;
     private String title;
     private String description;
-    private List<Task> tasks;
+    private List<String> taskIds;
 
     public Story(String title, String description) {
         this.id = UUID.randomUUID().toString();
         this.title = title;
         this.description = description;
-        this.tasks = new ArrayList<>();
+        this.taskIds = new ArrayList<>();
     }
 
     public void addTask(Task task) {
-        task.setParentId(id);
-        tasks.add(task);
+        taskIds.add(task.getId());
     }
 
     public String getId() {
@@ -33,9 +32,7 @@ public class Story {
     }
 
     public List<String> getTasks() {
-        return tasks.stream()
-                .map(Task::getId)
-                .collect(java.util.stream.Collectors.toList());
+        return new ArrayList<>(taskIds);
     }
 
     @Override
@@ -43,7 +40,7 @@ public class Story {
         return "Story{" +
                 "id='" + id + '\'' +
                 ", title='" + title + '\'' +
-                ", tasks=" + tasks.size() +
+                ", tasks=" + taskIds.size() +
                 '}';
     }
 }

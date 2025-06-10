@@ -1,12 +1,12 @@
 model/TaskPriority.class
-TaskManagementException.class
+exception/StoryNotFoundException.class
 repository/TaskRepository.class
 repository/UserRepository.class
 service/TaskService.class
-TaskNotFoundException.class
-StoryNotFoundException.class
+exception/TaskNotFoundException.class
 service/StoryService.class
-UserNotFoundException.class
+exception/TaskManagementException.class
+exception/UserNotFoundException.class
 controller/TaskController.class
 Main.class
 factory/TaskFactory.class
