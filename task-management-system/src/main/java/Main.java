@@ -26,6 +26,8 @@ public class Main {
         // Create subtask
         Task subtask1 = taskService.createSubtask(task1.getId(), "Subtask 1", "SubDesc 1", new Date(), user.getId());
         System.out.println(subtask1);
+        System.out.println("--------------------------------");
+        System.out.println(task1);
 
         // Move subtask
         taskService.moveTask(subtask1.getId(), null);

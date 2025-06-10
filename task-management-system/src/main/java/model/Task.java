@@ -124,6 +124,7 @@ public class Task {
                 ", title='" + title + '\'' +
                 ", status=" + status +
                 ", assignedUserId='" + assignedUserId + '\'' +
+                ", parentTaskId='" + parentTaskId + '\'' +
                 ", subtasks=" + subtasks.size() +
                 '}';
     }
