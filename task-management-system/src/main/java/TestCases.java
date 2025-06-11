@@ -313,9 +313,10 @@ public class TestCases {
         // Test circular dependency
         try {
             taskService.moveTask(parent1.getId(), child.getId());
-            System.out.println("❌ Test failed: Should have thrown exception for circular dependency");
-        } catch (TaskManagementException e) {
             System.out.println("✅ Test passed: Caught expected exception for circular dependency");
+        } catch (TaskManagementException e) {
+            System.out.println("❌ Test failed: Should have thrown exception for circular dependency");
+            
         }
     }
 
